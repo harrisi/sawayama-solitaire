@@ -1,3 +1,4 @@
+import { initDevtools } from '@pixi/devtools'
 import anime from 'animejs';
 import {
   Application,
@@ -76,6 +77,8 @@ export default class Game {
       resolution: window.devicePixelRatio || 1,
       backgroundColor: new Color(COLOR_BG).toNumber()
     });
+
+    initDevtools({ app: this.app })
 
     document.querySelector('.loader').remove();
 
@@ -473,7 +476,22 @@ export default class Game {
     this.hand.y = store.mousePosition[1] - this.handOffset[1];
   }
 
-  public handleHandClick({ card, mouseEvent }: CardClickData) {
+  public ace_tray_is_next(a: string, b: string) {
+    console.log(a, b)
+    const map = {
+      'a': '2',
+      '2': '3',
+      '3': '4',
+      '5': '6',
+      '6': '7',
+      '8': '9',
+      '10': 'j',
+      'j': 'q',
+    }
+    return map[b] === a
+  }
+
+  public handleHandClick({ card, mouseEvent }: CardClickData, up = false) {
     this.hand.eventMode = 'none';
 
     const boundary = new EventBoundary(this.gameElements);
@@ -485,7 +503,21 @@ export default class Game {
 
     this.hand.eventMode = 'static';
 
-    console.log('hand hit test', obj, obj.name);
+    console.log('hand hit test', obj, obj?.name);
+    console.log(this)
+
+    // if (
+    //   !(obj instanceof Card) &&
+    //   !(obj instanceof Cell) &&
+    //   !(obj instanceof AceTray) &&
+    //   !(obj?.name === 'bank_bg')) {
+
+    // if (obj instanceof Container) {
+    //   const cards = this.destroyHand();
+    //   this.bank.addChild(cards[0]);
+    //   this.refreshBank();
+    // }
+
 
     // a card was clicked
     if (obj instanceof Card) {
@@ -530,6 +562,14 @@ export default class Game {
         const top = stack.children.at(-1);
 
         if (!isFirstCardAllowedOnSecond(card, top)) {
+          const cards = this.destroyHand();
+            if (this.handOrigin == 7) {
+              this.bank.addChild(cards[0]);
+              this.refreshBank();
+              return
+            }
+          this.board.at(this.handOrigin).addCards(...cards)
+          this.handOrigin = null;
           return;
         }
 
@@ -573,8 +613,10 @@ export default class Game {
     if (
       obj instanceof AceTray &&
       this.hand.children.length === 1 &&
-      this.hand.children.at(0).suit === obj.suit
+      this.hand.children.at(0).suit === obj.suit &&
+      this.ace_tray_is_next(this.hand.children.at(0).rank, (<Card>obj.children.at(-1)).rank)
     ) {
+        console.log('acetray', obj)
       if (obj.add(this.hand.children.at(0))) {
         this.destroyHand();
         this.checkForFoundationCards();
@@ -582,26 +624,35 @@ export default class Game {
       return;
     }
 
-    if (obj.name === 'bank_bg' && this.handOrigin === BANK_STACK_ID) {
+    if (obj?.name === 'bank_bg' && this.handOrigin === BANK_STACK_ID) {
       console.log('bank_bg play');
       const cards = this.destroyHand();
       this.bank.addChild(cards[0]);
       this.refreshBank();
     }
+
+      const cards = this.destroyHand();
+        if (this.handOrigin == 7) {
+          this.bank.addChild(cards[0]);
+          this.refreshBank();
+          return
+        }
+      this.board.at(this.handOrigin).addCards(...cards)
+      this.handOrigin = null;
   }
 
   public initAceTray() {
     // create the dark background
     const bg = new Graphics();
     bg.beginFill('#00000033');
-    bg.drawRect(0, 0, ACE_TRAY_W, VIEW_H);
+    bg.drawRect(0, 0, VIEW_W, CARD_H);
     bg.endFill();
     this.gameElements.addChild(bg);
 
     Object.values(Suit).forEach((suit, idx) => {
       const tray = new AceTray(suit);
-      tray.x = STACK_GAP;
-      tray.y = STACK_GAP + idx * (CARD_H + STACK_GAP);
+      tray.y = STACK_GAP;
+      tray.x = STACK_GAP + idx * (CARD_H + STACK_GAP);
       this.foundation.push(tray);
       this.gameElements.addChild(tray);
     });
@@ -637,47 +688,91 @@ export default class Game {
 
     this.gameElements.eventMode = 'static';
     this.gameElements.interactiveChildren = true;
-    this.gameElements.addListener('pointermove', (event) => {
+    const store_fn = (event) => {
       store.mousePosition = [
         Math.round(event.globalX),
         Math.round(event.globalY)
       ];
       // document.querySelector('.mouse-x').innerHTML = event.globalX.toString();
       // document.querySelector('.mouse-y').innerHTML = event.globalY.toString();
-    });
+    };
+    this.gameElements.addListener('pointerdown', store_fn)
+    // this.gameElements.addListener('pointerup', store_fn)
+    this.gameElements.addListener('pointermove', store_fn)
 
     this.addChild(this.gameElements);
   }
 
   public listenForCardClick() {
     PubSub.subscribe(
-      GameEvent.CARD_CLICK,
+      GameEvent.CARD_DOWN,
       (msg: string, data: CardClickData) => {
-        console.log(`clicked ${data.card.rank} of ${data.card.suit}`);
+        console.log(`down ${data.card.rank} of ${data.card.suit}`);
         if (this.isAnimatingToFoundation) {
           return;
         }
 
         // handle card clicks from the bank
         if (this.bank.children.find((c) => c.id === data.card.id)) {
+          console.log(`bank down`)
           this.handleBankClick(data);
           return;
         }
 
         // handle card clicks on hand
         if (this.hand?.children.find((c) => c.id === data.card.id)) {
+          console.log(`hand down`)
           this.handleHandClick(data);
           return;
         }
 
         // handle card click on the deck cell
         if (this.deckCell.card?.id === data.card.id) {
+          console.log(`deck cell down`)
           this.handleFreeCellClick(data);
           return;
         }
 
         // handle card clicks on the board
         if (!this.hand) {
+          console.log(`board down`)
+          this.handleBoardClick(data);
+        }
+      }
+    );
+
+    PubSub.subscribe(
+      GameEvent.CARD_UP,
+      (msg: string, data: CardClickData) => {
+        console.log(`up ${data.card.rank} of ${data.card.suit}`);
+        if (this.isAnimatingToFoundation) {
+          return;
+        }
+
+        // handle card clicks from the bank
+        if (this.bank.children.find((c) => c.id === data.card.id)) {
+          console.log('bank up')
+          this.handleBankClick(data);
+          return;
+        }
+
+        // handle card click on the deck cell
+        if (this.deckCell.card?.id === data.card.id) {
+          console.log('deck cell up')
+          this.handleFreeCellClick(data);
+          return;
+        }
+
+        // handle card clicks on hand
+        if (this.hand?.children.find((c) => c.id === data.card.id)) {
+          console.log('hand up')
+          this.handleHandClick(data, true);
+          return;
+        }
+
+        // handle card clicks on the board
+        if (!this.hand) {
+          console.log('board up')
           this.handleBoardClick(data);
         }
       }
@@ -686,7 +781,7 @@ export default class Game {
 
   public listenForDeckClick() {
     this.deckSprites.eventMode = 'static';
-    this.deckSprites.addEventListener('pointertap', async (event) => {
+    const done_fn = async (event) => {
       if (this.isAnimatingDeckDraw) {
         return;
       }
@@ -731,7 +826,9 @@ export default class Game {
           });
         });
       }
-    });
+    }
+    this.deckSprites.addEventListener('pointertap', done_fn)
+    this.deckSprites.addEventListener('pointerup', done_fn)
   }
 
   public refreshBank() {

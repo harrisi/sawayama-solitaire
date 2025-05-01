@@ -10,16 +10,27 @@ body {
 .wrapper {
   position: relative;
   margin: 0 auto;
-  max-width: 980px;
+  /* max-width: 980px; */
 }
 
 #board {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 980px;
-  height: 678px;
+  /* width: 980px;
+  height: 678px; */
   background: #505459;
+}
+
+@media screen and (min-width: 768px) {
+  .wrapper {
+    max-width: 980px;
+  }
+
+  #board {
+    width: 980px;
+    height: 678px;
+  }
 }
 
 #board canvas {

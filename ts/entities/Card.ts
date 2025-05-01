@@ -61,7 +61,14 @@ export default class Card extends Container {
     this.eventMode = 'none';
 
     this.addListener('pointerdown', (event) => {
-      PubSub.publish(GameEvent.CARD_CLICK, {
+      PubSub.publish(GameEvent.CARD_DOWN, {
+        card: this,
+        mouseEvent: event
+      });
+    });
+
+    this.addListener('pointerup', (event) => {
+      PubSub.publish(GameEvent.CARD_UP, {
         card: this,
         mouseEvent: event
       });

@@ -1,13 +1,14 @@
 // Cards
+export const SM = document.documentElement.clientWidth < 768;
 export const CARD_W = 100;
 export const CARD_H = Math.round(CARD_W * 1.38095238);
-export const CARD_OFFSET_VERTICAL = CARD_H / 5;
-export const CARD_OFFSET_HORIZONTAL = 21;
-export const STACK_GAP = 18;
+export const CARD_OFFSET_VERTICAL = CARD_H / 3.5;
+export const CARD_OFFSET_HORIZONTAL = SM ? 25 : 21;
+export const STACK_GAP = SM ? 2 : 18;
 export const ACE_TRAY_W = CARD_W + STACK_GAP * 2;
-export const DECK_POS = { x: ACE_TRAY_W + STACK_GAP, y: 35 };
-export const CARD_ANIM_SPEED_MS = 100;
-export const BOARD_Y = STACK_GAP + STACK_GAP / 2 + CARD_H + STACK_GAP;
+export const DECK_POS = { x: STACK_GAP, y: SM ? CARD_H * 1.25 : 35 };
+export const CARD_ANIM_SPEED_MS = 50;
+export const BOARD_Y = CARD_H + STACK_GAP + STACK_GAP / 2 + CARD_H * 1.5 + STACK_GAP;
 
 export enum Suit {
   Clubs = 'clubs',
@@ -33,15 +34,17 @@ export enum Rank {
 }
 
 // View
-export const VIEW_W = ACE_TRAY_W + (CARD_W + STACK_GAP) * 7 + STACK_GAP;
-export const VIEW_H = (STACK_GAP + CARD_H) * 4 + STACK_GAP * 3;
+export const VIEW_W = (CARD_W + STACK_GAP) * 7 + STACK_GAP;
+export const VIEW_H = (STACK_GAP + CARD_H) * 10 + STACK_GAP;
 
 // Colors
 export const COLOR_BG = '#505459';
 
 // Events
 export enum GameEvent {
-  CARD_CLICK = 'CARD_CLICK'
+  CARD_CLICK = 'CARD_CLICK',
+  CARD_DOWN = 'CARD_DOWN',
+  CARD_UP = 'CARD_UP'
 }
 
 // Misc

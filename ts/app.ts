@@ -13,7 +13,7 @@ init();
 
 async function init() {
   // load everything and call main
-  const texture = await Assets.load('images/deck.png');
+  const texture = await Assets.load('images/deck_mobile.png');
   const sheet = new Spritesheet(texture, deckData);
   await sheet.parse();
   store.spritesheet = sheet;
